@@ -1,0 +1,11 @@
+# IDE
+.idea/
+
+# Secrets
+clouds.yaml
+
+# Binaries
+osbckp
+
+# Logs
+*.log
