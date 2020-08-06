@@ -1,4 +1,4 @@
-module backup.go
+module github.com/joivo/osbckp
 
 go 1.14
 
