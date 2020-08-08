@@ -57,7 +57,7 @@ func loadConfFile(l *log.Logger) []byte {
 }
 
 func CreateServersSnapshots(l *log.Logger, conf CloudsYaml, provider *gophercloud.ProviderClient) {
-
+	l.Infoln("Creating snapshots")
 	computeOpts := gophercloud.EndpointOpts{
 		Region:       conf.Clouds.OpenStack.RegionName,
 		Availability: gophercloud.AvailabilityAdmin,
@@ -76,35 +76,24 @@ func CreateServersSnapshots(l *log.Logger, conf CloudsYaml, provider *gopherclou
 
 	l.Infof("%d images were found", len(srvs))
 
-	var srvc = make(chan servers.Server)
-
-	go func() {
-		for srv := range srvc {
-			const layout = "2006-01-02"
-			snapshotName := srv.Name + "_" + time.Now().Format(layout)
-			createImgOpts := servers.CreateImageOpts{
-				Name: snapshotName,
-			}
-			l.Infoln("Snapshot name", snapshotName)
-			l.Infof("Sending request to build image for %s", srv.Name)
-			r := servers.CreateImage(computeV2, srv.ID, createImgOpts)
-			l.Infoln(r.Result.PrettyPrintJSON())
-		}
-	}()
-
 	for _, srv := range srvs {
-		timeout := (time.Duration(2) * time.Second).Seconds()
-		err := gophercloud.WaitFor(int(timeout), func() (bool, error) {
-			srvc <- srv
-			return true, nil
-		})
-		handleErr(err, l)
+		const layout = "2006-01-02"
+		snapshotName := srv.Name + "_" + time.Now().Format(layout)
+		createImgOpts := servers.CreateImageOpts{
+			Name: snapshotName,
+		}
+		l.Infoln("Snapshot name", snapshotName)
+		l.Infof("Sending request to build image for %s", srv.Name)
+		l.Infof("Creating snapshot of server %s\n", srv.ID)
+		go servers.CreateImage(computeV2, srv.ID, createImgOpts)
 	}
 
-	time.Sleep(120 * time.Second)
+	time.Sleep(2 * time.Second)
+	l.Infof("End")
 }
 
 func CreateClientProvider(conf CloudsYaml, l *log.Logger) (*gophercloud.ProviderClient, error) {
+	l.Info("Creating client provider")
 	authOpts := gophercloud.AuthOptions{
 		IdentityEndpoint: conf.Clouds.OpenStack.Auth.AuthUrl,
 		UserID:           conf.Clouds.OpenStack.Auth.UserID,
@@ -138,6 +127,7 @@ func main() {
 
 	provider, err := CreateClientProvider(conf, l)
 	handleErr(err, l)
+
 	CreateServersSnapshots(l, conf, provider)
 }
 
