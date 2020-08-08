@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"github.com/gophercloud/gophercloud/openstack/identity/v3/projects"
 	"os"
 	"time"
 
@@ -57,6 +56,67 @@ func loadConfFile(l *log.Logger) []byte {
 	return data
 }
 
+func CreateServersSnapshots(l *log.Logger, conf CloudsYaml, provider *gophercloud.ProviderClient) {
+
+	computeOpts := gophercloud.EndpointOpts{
+		Region:       conf.Clouds.OpenStack.RegionName,
+		Availability: gophercloud.AvailabilityAdmin,
+	}
+
+	computeV2, err := openstack.NewComputeV2(provider, computeOpts)
+	handleErr(err, l)
+
+	allPages, err := servers.List(computeV2, servers.ListOpts{
+		AllTenants:   true,
+	}).AllPages()
+	handleErr(err, l)
+
+	srvs, err := servers.ExtractServers(allPages)
+	handleErr(err, l)
+
+	l.Infof("%d images were found", len(srvs))
+
+	var srvc = make(chan servers.Server)
+
+	go func() {
+		for srv := range srvc {
+			const layout = "2006-01-02"
+			snapshotName := srv.Name + "_" + time.Now().Format(layout)
+			createImgOpts := servers.CreateImageOpts{
+				Name: snapshotName,
+			}
+			l.Infoln("Snapshot name", snapshotName)
+			l.Infof("Sending request to build image for %s", srv.Name)
+			r := servers.CreateImage(computeV2, srv.ID, createImgOpts)
+			l.Infoln(r.Result.PrettyPrintJSON())
+		}
+	}()
+
+	for _, srv := range srvs {
+		timeout := (time.Duration(2) * time.Second).Seconds()
+		err := gophercloud.WaitFor(int(timeout), func() (bool, error) {
+			srvc <- srv
+			return true, nil
+		})
+		handleErr(err, l)
+	}
+
+	time.Sleep(120 * time.Second)
+}
+
+func CreateClientProvider(conf CloudsYaml, l *log.Logger) (*gophercloud.ProviderClient, error) {
+	authOpts := gophercloud.AuthOptions{
+		IdentityEndpoint: conf.Clouds.OpenStack.Auth.AuthUrl,
+		UserID:           conf.Clouds.OpenStack.Auth.UserID,
+		Password:         conf.Clouds.OpenStack.Auth.Password,
+		Scope: &gophercloud.AuthScope{
+			ProjectID: conf.Clouds.OpenStack.Auth.ProjectID,
+		},
+	}
+	provider, err := openstack.AuthenticatedClient(authOpts)
+	return provider, err
+}
+
 func main() {
 	const logPath = "osbckp.log"
 	flag.Parse()
@@ -67,6 +127,7 @@ func main() {
 	defer lf.Close()
 	l := log.Init("OpenStackBackup", *verbose, false, lf)
 	defer l.Close()
+	l.Infoln("**** Starting Backup Service ****")
 
 	data := loadConfFile(l)
 
@@ -75,48 +136,9 @@ func main() {
 	err = yaml.Unmarshal(data, &conf)
 	handleErr(err, l)
 
-	authOpts := gophercloud.AuthOptions{
-		IdentityEndpoint: conf.Clouds.OpenStack.Auth.AuthUrl,
-		UserID:           conf.Clouds.OpenStack.Auth.UserID,
-		Password:         conf.Clouds.OpenStack.Auth.Password,
-	}
-	provider, err := openstack.AuthenticatedClient(authOpts)
+	provider, err := CreateClientProvider(conf, l)
 	handleErr(err, l)
-
-	clientOpts := gophercloud.EndpointOpts{
-		Region:       conf.Clouds.OpenStack.RegionName,
-		Availability: gophercloud.AvailabilityAdmin,
-	}
-
-	identityV3, err := openstack.NewIdentityV3(provider, clientOpts)
-
-	handleErr(err, l)
-
-	allPages, err := projects.List(identityV3, nil).AllPages()
-	handleErr(err, l)
-	extractedProjects, err := projects.ExtractProjects(allPages)
-
-
-
-
-	computeV2, err := openstack.NewComputeV2(provider, clientOpts)
-	handleErr(err, l)
-	allPages, err = servers.List(computeV2, nil).AllPages()
-	handleErr(err, l)
-	srvs, err := servers.ExtractServers(allPages)
-	handleErr(err, l)
-	l.Infof("%d images were found", len(srvs))
-
-	for _, srv := range srvs {
-		const layout = "2006-01-02 15:04:05"
-		snapshotName := srv.Name + "_" + time.Now().Format(layout)
-		createImgOpts := servers.CreateImageOpts{
-			Name: snapshotName,
-		}
-		l.Infoln("Snapshot name", snapshotName)
-		l.Infof("Sending request to build image for %s", srv.Name)
-		servers.CreateImage(computeV2, srv.ID, createImgOpts)
-	}
+	CreateServersSnapshots(l, conf, provider)
 }
 
 func handleErr(err error, l *log.Logger) {
