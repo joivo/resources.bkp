@@ -1,6 +1,6 @@
 .PHONY: build
 build:
-	@GOOS=linux GOARCH=amd64 go build -o osbckp cmd/main.go
+	@go fmt ./... && GOOS=linux GOARCH=amd64 go build -o sssaver cmd/main.go
 
 .PHONY: clean
 clean:

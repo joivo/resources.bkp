@@ -2,16 +2,14 @@ package config
 
 import (
 	"os"
-	"sync"
 
 	"github.com/joivo/osbckp/util"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/nuveo/log"
 	"gopkg.in/yaml.v3"
 )
 
 type OpenStackConfig struct {
-	Mutex  *sync.Mutex
 	Clouds struct {
 		OpenStack struct {
 			Auth struct {
@@ -37,39 +35,14 @@ func LoadConfig() {
 
 	err := yaml.Unmarshal(data, &openStackConfig)
 	util.HandleErr(err)
-
-	openStackConfig.Mutex = new(sync.Mutex)
-
-	loadLogFile()
 }
 
 func GetOpenStackConfig() *OpenStackConfig {
-	openStackConfig.Mutex.Lock()
-	defer openStackConfig.Mutex.Unlock()
 	return &openStackConfig
 }
 
-const logFilePath = "/var/log/osbckp"
-
-func createLogPath() {
-	_, err := os.Stat(logFilePath)
-	if os.IsNotExist(err) {
-		err = os.MkdirAll(logFilePath, 0755)
-		util.HandleErr(err)
-	}
-}
-
-func loadLogFile() {
-	createLogPath()
-	f, err := os.OpenFile(logFilePath+"/osbckp.log", os.O_WRONLY | os.O_CREATE, 0755)
-	if err != nil {
-		util.HandleErr(err)
-	}
-	log.SetOutput(f)
-}
-
 func loadConfFile() []byte {
-	log.Info("Loading clouds file")
+	log.Println("Loading clouds file")
 	const cloudsFile = "clouds.yaml"
 	file, err := os.Open(cloudsFile)
 
@@ -79,15 +52,15 @@ func loadConfFile() []byte {
 	defer file.Close()
 	fi, err := file.Stat()
 	if err != nil {
-		log.Infoln("Could not obtain stat: ", err.Error())
+		log.Errorln("Could not obtain stat: ", err.Error())
 	}
-	log.Infof("Loaded %d bytes from %s\n", fi.Size(), cloudsFile)
+	log.Printf("Loaded %d bytes from %s\n", fi.Size(), cloudsFile)
 
 	data := make([]byte, fi.Size())
 
 	count, err := file.Read(data)
 	util.HandleErr(err)
 
-	log.Infof("%d bytes read\n", count)
+	log.Printf("%d bytes read\n", count)
 	return data
 }
