@@ -4,5 +4,8 @@
 # Secrets
 clouds.yaml
 
+# Binaries
+sssaver
+
 # Logs
 *.log

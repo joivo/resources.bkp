@@ -4,4 +4,4 @@ build:
 
 .PHONY: clean
 clean:
-	@rm -rf osbckp.log osbckp
+	@rm -rf sssaver.log sssaver
