@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/joivo/osbckp/util"
+
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 )
@@ -33,15 +34,38 @@ var openStackConfig OpenStackConfig
 
 func LoadConfig() {
 	data := loadConfFile()
+
 	err := yaml.Unmarshal(data, &openStackConfig)
 	util.HandleErr(err)
+
 	openStackConfig.Mutex = new(sync.Mutex)
+
+	loadLogFile()
 }
 
 func GetOpenStackConfig() *OpenStackConfig {
 	openStackConfig.Mutex.Lock()
 	defer openStackConfig.Mutex.Unlock()
 	return &openStackConfig
+}
+
+const logFilePath = "/var/log/osbckp"
+
+func createLogPath() {
+	_, err := os.Stat(logFilePath)
+	if os.IsNotExist(err) {
+		err = os.MkdirAll(logFilePath, 0755)
+		util.HandleErr(err)
+	}
+}
+
+func loadLogFile() {
+	createLogPath()
+	f, err := os.OpenFile(logFilePath+"/osbckp.log", os.O_WRONLY | os.O_CREATE, 0755)
+	if err != nil {
+		util.HandleErr(err)
+	}
+	log.SetOutput(f)
 }
 
 func loadConfFile() []byte {

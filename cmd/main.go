@@ -10,9 +10,9 @@ import (
 )
 
 func main() {
-	log.Infoln("**** Starting Backup Service ****")
-
 	config.LoadConfig()
+
+	log.Infoln("**** Starting Backup Service ****")
 
 	osbckp.RegisterWorkers()
 	osbckp.StartWorkers()

@@ -12,6 +12,7 @@ import (
 )
 
 type worker func(wg *sync.WaitGroup)
+type job func()
 
 var workers []worker
 
@@ -39,6 +40,11 @@ func SnapshotWorker(wg *sync.WaitGroup) {
 	log.Infof("EntryID: %s \n", entryId)
 }
 
+func RunStartUpJob(fn job) {
+	log.Infoln("Running first start job")
+	fn()
+}
+
 func RegisterWorker(fn worker) {
 	workers = append(workers, fn)
 }
@@ -52,6 +58,8 @@ func RegisterWorkers() {
 }
 
 func StartWorkers() {
+	RunStartUpJob(SnapshotJob)
+
 	log.Infoln("Starting workers")
 
 	wg := new(sync.WaitGroup)
