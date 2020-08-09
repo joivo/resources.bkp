@@ -4,8 +4,5 @@
 # Secrets
 clouds.yaml
 
-# Binaries
-osbckp
-
 # Logs
 *.log
