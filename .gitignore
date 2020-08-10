@@ -4,7 +4,6 @@
 # Secrets
 clouds.yaml
 rsync.json
-private.json
 
 # Binaries
 sssaver
