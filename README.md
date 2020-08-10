@@ -1,2 +1,2 @@
-## Sync Edge OpenStack snapshots with Cloud
+## Periodic OpenStack snapshots for instances & volumes 
     
