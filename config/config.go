@@ -30,11 +30,11 @@ type OpenStackConfig struct {
 }
 
 const (
-	DateLayout         = "2006-01-02"
+	DateLayout         = "29-01-1996"
 	SnapshotSuffix     = "snapshot_"
 	UsefulVolumeStatus = "available"
 	UsefulServerStatus = "active"
-	PoolingInterval    = 5 * time.Second
+	PoolingInterval    = 10 * time.Second
 	FifteenDaysInMin = 360
 )
 

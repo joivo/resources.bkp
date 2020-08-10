@@ -22,7 +22,7 @@ var (
 )
 
 func SnapshotJob() {
-	log.Println("Starting SnapShot Job at ", time.Now().Format(config.DateLayout))
+	log.Printf("Starting Snapshot Job at [%s]", time.Now().Format(config.DateLayout))
 
 	provider, err := CreateClientProvider()
 	util.HandleErr(err)
@@ -35,6 +35,7 @@ func SnapshotJob() {
 
 	CreateVolumesSnapshots(provider, computeOpts)
 	CreateServersSnapshots(provider, computeOpts)
+	CreateBackup()
 }
 
 func SnapshotWorker(wg *sync.WaitGroup) {
@@ -49,7 +50,7 @@ func SnapshotWorker(wg *sync.WaitGroup) {
 
 	c.Run()
 
-	log.Printf("EntryID: %s \n", entryId)
+	log.Printf("EntryID: [%s] \n", entryId)
 }
 
 func startHandle(fn job) {
@@ -67,7 +68,7 @@ func RegisterWorker(fn worker) {
 func StartWorkers() {
 	startHandle(SnapshotJob)
 
-	log.Printf("Workers waiting %v minutes to wake up again", config.FifteenDaysInMin)
+	log.Printf("Workers waiting [%v] minutes to wake up again", config.FifteenDaysInMin)
 
 
 	wg := new(sync.WaitGroup)

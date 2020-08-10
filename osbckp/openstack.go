@@ -22,7 +22,7 @@ func handleVolumeSnapshotResult(res snapshots.CreateResult, group *sync.WaitGrou
 	snap, err := res.Extract()
 	util.HandleErr(err)
 	id := snap.ID
-	log.Println("Handling snapshot result to volume with ID", id)
+	log.Println("Handling snapshot result to volume with ID ", id)
 	log.Println("Snapshot initial status ", snap.Status)
 
 	err = snapshots.WaitForStatus(client, id, config.UsefulVolumeStatus, 60)
@@ -52,14 +52,14 @@ func CreateVolumesSnapshots(provider *gophercloud.ProviderClient, eopts gophercl
 	extractedVolumes, err := volumes.ExtractVolumes(allPages)
 	util.HandleErr(err)
 	
-	log.Printf("%d volumes were found\n", len(extractedVolumes))
+	log.Printf("[%d] volumes were found\n", len(extractedVolumes))
 
 	wg := new(sync.WaitGroup)
 
 	wg.Add(len(extractedVolumes))
 	for _, v := range extractedVolumes {
 		snapshotName := config.SnapshotSuffix + v.ID + "_" + time.Now().Format(config.DateLayout)
-		desc := "Snapshot automatically created created by backup service"
+		desc := "Snapshot automatically created by backup service"
 		createSnapshotOpts := snapshots.CreateOpts{
 			VolumeID:    v.ID,
 			Force:       true,
@@ -67,8 +67,8 @@ func CreateVolumesSnapshots(provider *gophercloud.ProviderClient, eopts gophercl
 			Description: desc,
 		}
 		log.Println("Snapshot name ", snapshotName)
-		log.Printf("Sending request to snapshot for %s volume\n", v.Name)
-		log.Printf("Creating snapshot of volume %s\n", v.ID)
+		log.Printf("Sending request to snapshot for [%s] volume\n", v.Name)
+		log.Printf("Creating snapshot of volume [%s]\n", v.ID)
 
 		func(w *sync.WaitGroup) {
 			group := new(sync.WaitGroup)
@@ -94,8 +94,7 @@ func handleInstanceSnapshotResult(res servers.CreateImageResult, group *sync.Wai
 	util.HandleErr(err)
 
 	for maxRetry != 0 {
-		log.Println("Checking result of instance snapshot ", id)
-		log.Println("Retry ", maxRetry)
+		log.Printf("Checking snapshot result of instance [%s]. Retry number [%d]", id, maxRetry)
 
 		r := images.Get(client, id)
 
