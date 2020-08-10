@@ -12,7 +12,7 @@ import (
 )
 
 func Zip(source, target string) error {
-	log.Printf("Zipping %s into %s", source, target)
+	log.Printf("Zipping %s into %s\n", source, target)
 
 	zipfile, err := os.Create(target)
 	util.HandleErr(err)

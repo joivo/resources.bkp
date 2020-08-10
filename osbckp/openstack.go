@@ -22,8 +22,8 @@ func handleVolumeSnapshotResult(res snapshots.CreateResult, group *sync.WaitGrou
 	snap, err := res.Extract()
 	util.HandleErr(err)
 	id := snap.ID
-	log.Println("Handling snapshot result to volume with ID ", id)
-	log.Println("Snapshot initial status ", snap.Status)
+	log.Printf("Handling snapshot result to volume with ID [%s]\n", id)
+	log.Printf("Snapshot initial status [%s]\n", snap.Status)
 
 	err = snapshots.WaitForStatus(client, id, config.UsefulVolumeStatus, 60)
 	if err != nil {
@@ -45,13 +45,13 @@ func CreateVolumesSnapshots(provider *gophercloud.ProviderClient, eopts gophercl
 	util.HandleErr(err)
 
 	allPages, err := volumes.List(bsV3, volumes.ListOpts{
-		Status:   config.UsefulVolumeStatus,
+		Status: config.UsefulVolumeStatus,
 	}).AllPages()
 	util.HandleErr(err)
-	
+
 	extractedVolumes, err := volumes.ExtractVolumes(allPages)
 	util.HandleErr(err)
-	
+
 	log.Printf("[%d] volumes were found\n", len(extractedVolumes))
 
 	wg := new(sync.WaitGroup)
@@ -67,7 +67,7 @@ func CreateVolumesSnapshots(provider *gophercloud.ProviderClient, eopts gophercl
 			Description: desc,
 		}
 		log.Println("Snapshot name ", snapshotName)
-		log.Printf("Sending request to snapshot for [%s] volume\n", v.Name)
+		log.Printf("Sending request to snapshot for [%s] volume\n", v.ID)
 		log.Printf("Creating snapshot of volume [%s]\n", v.ID)
 
 		func(w *sync.WaitGroup) {
@@ -88,18 +88,18 @@ func CreateVolumesSnapshots(provider *gophercloud.ProviderClient, eopts gophercl
 
 func handleInstanceSnapshotResult(res servers.CreateImageResult, group *sync.WaitGroup, client *gophercloud.ServiceClient) {
 	defer group.Done()
-	var maxRetry  = 100
+	var maxRetry = 100
 
 	id, err := res.ExtractImageID()
 	util.HandleErr(err)
 
 	for maxRetry != 0 {
-		log.Printf("Checking snapshot result of instance [%s]. Retry number [%d]", id, maxRetry)
+		log.Printf("Checking result of snapshot with ID [%s]. Retry number [%d]\n", id, maxRetry)
 
 		r := images.Get(client, id)
 
 		var Response struct {
-			Image struct{
+			Image struct {
 				Status string `json:"status"`
 			}
 		}
@@ -108,7 +108,7 @@ func handleInstanceSnapshotResult(res servers.CreateImageResult, group *sync.Wai
 		util.HandleErr(err)
 
 		currentStatus := strings.ToLower(Response.Image.Status)
-		log.Printf("Image has status [%s]\n", currentStatus)
+		log.Printf("Image [%s] has status [%s]\n", id, currentStatus)
 
 		if currentStatus == string(images.ImageStatusActive) {
 			return
@@ -144,7 +144,7 @@ func CreateServersSnapshots(provider *gophercloud.ProviderClient, eopts gophercl
 
 	wg.Add(len(extractedServers))
 	for _, srv := range extractedServers {
-		
+
 		snapshotName := config.SnapshotSuffix + srv.Name + "_" + time.Now().Format(config.DateLayout)
 		createImgOpts := servers.CreateImageOpts{
 			Name: snapshotName,

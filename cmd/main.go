@@ -10,18 +10,9 @@ import (
 	"github.com/nuveo/log"
 )
 
-func createLogPath() (logFilePath string) {
-	logFilePath = "logs"
-	_, err := os.Stat(logFilePath)
-	if os.IsNotExist(err) {
-		err = os.MkdirAll(logFilePath, 0755)
-		util.HandleErr(err)
-	}
-	return
-}
-
-func loadLogFile() (f *os.File, err error){
-	path := createLogPath()
+func loadLogFile() (f *os.File, err error) {
+	path := "/var/log/osbckp"
+	util.CreatePathIfNotExist(path)
 	f, err = os.OpenFile(path+"/osbckp.log", os.O_WRONLY|os.O_CREATE, 0755)
 
 	return
@@ -32,7 +23,9 @@ func main() {
 
 	config.LoadConfig()
 
-	osbckp.RegisterWorker(osbckp.SnapshotWorker)
+	// osbckp.RegisterWorker(osbckp.SnapshotWorker)
+	// osbckp.RegisterWorker(osbckp.SyncBackupWorker)
+	osbckp.RegisterWorker(osbckp.SharePointBackupWorker)
 	osbckp.StartWorkers()
 
 	log.Println("Exiting...")

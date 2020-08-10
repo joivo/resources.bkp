@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	zipSuffix = ".zip"
+	zipSuffix     = ".zip"
 	backupBaseDir = "/home/backup/"
 
 	kollaConfigDir = "/etc/kolla"
@@ -14,31 +14,26 @@ const (
 	dockerBaseDir  = "/home/docker/"
 	volumesBaseDir = dockerBaseDir + "volumes/"
 
-	containersDir  = dockerBaseDir + "containers/"
-	builderDir  = dockerBaseDir + "builder/"
-	imageDir = dockerBaseDir + "image/"
-	networkDir = dockerBaseDir + "network/"
-	overlay2Dir = dockerBaseDir + "overlay2/"
-	pluginsDir = dockerBaseDir + "plugins/"
-	runtimesDir = dockerBaseDir + "runtimes/"
-	trustDir = dockerBaseDir + "trust/"
-	cinderDir = volumesBaseDir + "cinder/"
-	fluentdDir = volumesBaseDir + "fluentd_data/"
-	glanceDir = volumesBaseDir + "glance/"
-	grafanaDir = volumesBaseDir + "grafana/"
-	haProxyDir = volumesBaseDir + "haproxy_socket/"
-	iscsiDir = volumesBaseDir + "iscsi_info/"
+	containersDir           = dockerBaseDir + "containers/"
+	builderDir              = dockerBaseDir + "builder/"
+	imageDir                = dockerBaseDir + "image/"
+	networkDir              = dockerBaseDir + "network/"
+	pluginsDir              = dockerBaseDir + "plugins/"
+	runtimesDir             = dockerBaseDir + "runtimes/"
+	trustDir                = dockerBaseDir + "trust/"
+	cinderDir               = volumesBaseDir + "cinder/"
+	fluentdDir              = volumesBaseDir + "fluentd_data/"
+	glanceDir               = volumesBaseDir + "glance/"
+	grafanaDir              = volumesBaseDir + "grafana/"
+	iscsiDir                = volumesBaseDir + "iscsi_info/"
 	keystoneFernetTokensDir = volumesBaseDir + "keystone_fernet_tokens/"
-	libvirtdDir = volumesBaseDir + "libvirtd/"
-	magnumDir = volumesBaseDir + "magnum/"
-	mariaDBDir = volumesBaseDir + "mariadb/"
-	metadaFile = volumesBaseDir + "metadata.db"
-	neutroMetadataDir = volumesBaseDir + "neutron_metadata_socket/"
-	novaComputeDir = volumesBaseDir + "nova_compute/"
-	novaLibvirtDir = volumesBaseDir + "nova_libvirt_qemu/"
-	oVSwitchDir = volumesBaseDir + "openvswitch_db/"
-	prometheusDir = volumesBaseDir + "prometheus/"
-	rabbitmqDir = volumesBaseDir + "rabbitmq/"
+	magnumDir               = volumesBaseDir + "magnum/"
+	metadataFile            = volumesBaseDir + "metadata.db"
+	novaComputeDir          = volumesBaseDir + "nova_compute/"
+	novaLibvirtDir          = volumesBaseDir + "nova_libvirt_qemu/"
+	oVSwitchDir             = volumesBaseDir + "openvswitch_db/"
+	prometheusDir           = volumesBaseDir + "prometheus/"
+	rabbitmqDir             = volumesBaseDir + "rabbitmq/"
 )
 
 func createZip(base string) (err error) {
@@ -52,10 +47,14 @@ func createZip(base string) (err error) {
 }
 
 func CreateBackup() {
+	const backupPath = "/home/backup"
+	util.CreatePathIfNotExist(backupPath)
+
 	// Zip kolla config
 	err := createZip(kollaConfigDir)
 	util.HandleErr(err)
 
+	// Zip docker data
 	err = createZip(containersDir)
 	util.HandleErr(err)
 
@@ -66,9 +65,6 @@ func CreateBackup() {
 	util.HandleErr(err)
 
 	err = createZip(networkDir)
-	util.HandleErr(err)
-
-	err = createZip(overlay2Dir)
 	util.HandleErr(err)
 
 	err = createZip(pluginsDir)
@@ -92,28 +88,16 @@ func CreateBackup() {
 	err = createZip(grafanaDir)
 	util.HandleErr(err)
 
-	err = createZip(haProxyDir)
-	util.HandleErr(err)
-
 	err = createZip(iscsiDir)
 	util.HandleErr(err)
 
 	err = createZip(keystoneFernetTokensDir)
 	util.HandleErr(err)
 
-	err = createZip(libvirtdDir)
-	util.HandleErr(err)
-
 	err = createZip(magnumDir)
 	util.HandleErr(err)
 
-	err = createZip(mariaDBDir)
-	util.HandleErr(err)
-
-	err = createZip(metadaFile)
-	util.HandleErr(err)
-
-	err = createZip(neutroMetadataDir)
+	err = createZip(metadataFile)
 	util.HandleErr(err)
 
 	err = createZip(novaComputeDir)

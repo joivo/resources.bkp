@@ -1,7 +1,9 @@
 package config
 
 import (
+	"encoding/json"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/joivo/osbckp/util"
@@ -9,6 +11,12 @@ import (
 	"github.com/nuveo/log"
 	"gopkg.in/yaml.v3"
 )
+
+type RSyncJson struct {
+	RSH         string
+	Source      string
+	Destination string
+}
 
 type OpenStackConfig struct {
 	Clouds struct {
@@ -30,47 +38,61 @@ type OpenStackConfig struct {
 }
 
 const (
-	DateLayout         = "29-01-1996"
+	DateLayout         = "2006-01-02"
 	SnapshotSuffix     = "snapshot_"
 	UsefulVolumeStatus = "available"
 	UsefulServerStatus = "active"
 	PoolingInterval    = 10 * time.Second
-	FifteenDaysInMin = 360
+	FifteenDaysInMin   = 360
 )
 
+var (
+	openStackConfig OpenStackConfig
+	rsyncConfig     RSyncJson
+	mu              = new(sync.Mutex)
+)
 
-var openStackConfig OpenStackConfig
+const (
+	rsyncjson  = "rsync.json"
+	cloudsFile = "clouds.yaml"
+)
 
 func LoadConfig() {
-	data := loadConfFile()
+	cloudsConf := getBytesOfFile(cloudsFile)
+	err := yaml.Unmarshal(cloudsConf, &openStackConfig)
+	util.HandleFatal(err)
 
-	err := yaml.Unmarshal(data, &openStackConfig)
-	util.HandleErr(err)
+	rsyncConf := getBytesOfFile(rsyncjson)
+	err = json.Unmarshal(rsyncConf, &rsyncConfig)
+	util.HandleFatal(err)
 }
 
 func GetOpenStackConfig() *OpenStackConfig {
+	defer mu.Unlock()
+	mu.Lock()
 	return &openStackConfig
 }
 
-func loadConfFile() []byte {
-	log.Println("Loading clouds file")
-	const cloudsFile = "clouds.yaml"
-	file, err := os.Open(cloudsFile)
+func GetRSyncConfig() *RSyncJson {
+	defer mu.Unlock()
+	mu.Lock()
+	return &rsyncConfig
+}
 
-	if err != nil {
-		log.Fatal(err.Error())
-	}
+func getBytesOfFile(fileName string) []byte {
+	log.Printf("Loading %s file\n", fileName)
+
+	file, err := os.Open(fileName)
+	util.HandleFatal(err)
 	defer file.Close()
+
 	fi, err := file.Stat()
-	if err != nil {
-		log.Errorln("Could not obtain stat: ", err.Error())
-	}
-	log.Printf("Loaded %d bytes from %s\n", fi.Size(), cloudsFile)
+	util.HandleErr(err)
+	log.Printf("Loaded %d bytes from %s\n", fi.Size(), fileName)
 
 	data := make([]byte, fi.Size())
-
 	count, err := file.Read(data)
-	util.HandleErr(err)
+	util.HandleFatal(err)
 
 	log.Printf("%d bytes read\n", count)
 	return data
