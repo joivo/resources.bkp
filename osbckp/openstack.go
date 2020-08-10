@@ -69,9 +69,15 @@ func CreateVolumesSnapshots(provider *gophercloud.ProviderClient, eopts gophercl
 		log.Println("Snapshot name ", snapshotName)
 		log.Printf("Sending request to snapshot for %s volume\n", v.Name)
 		log.Printf("Creating snapshot of volume %s\n", v.ID)
-		func(group *sync.WaitGroup) {
+
+		func(w *sync.WaitGroup) {
+			group := new(sync.WaitGroup)
+			group.Add(1)
 			r := snapshots.Create(bsV3, createSnapshotOpts)
 			handleVolumeSnapshotResult(r, group, bsV3)
+
+			group.Wait()
+			w.Done()
 		}(wg)
 	}
 
