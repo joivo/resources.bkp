@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"time"
 
 	"github.com/joivo/osbckp/util"
 
@@ -27,6 +28,16 @@ type OpenStackConfig struct {
 		} `yaml:"openstack"`
 	} `yaml:"clouds"`
 }
+
+const (
+	DateLayout         = "2006-01-02"
+	SnapshotSuffix     = "snapshot_"
+	UsefulVolumeStatus = "available"
+	UsefulServerStatus = "active"
+	PoolingInterval    = 5 * time.Second
+	FifteenDaysInMin = 360
+)
+
 
 var openStackConfig OpenStackConfig
 

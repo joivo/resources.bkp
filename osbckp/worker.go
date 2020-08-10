@@ -2,13 +2,13 @@ package osbckp
 
 import (
 	"fmt"
-	"github.com/gophercloud/gophercloud"
-	"github.com/joivo/osbckp/config"
 	"sync"
 	"time"
 
+	"github.com/joivo/osbckp/config"
 	"github.com/joivo/osbckp/util"
 
+	"github.com/gophercloud/gophercloud"
 	"github.com/nuveo/log"
 	"github.com/robfig/cron/v3"
 )
@@ -22,7 +22,7 @@ var (
 )
 
 func SnapshotJob() {
-	log.Println("Starting SnapShot Job at", time.Now())
+	log.Println("Starting SnapShot Job at ", time.Now().Format(config.DateLayout))
 
 	provider, err := CreateClientProvider()
 	util.HandleErr(err)
@@ -33,16 +33,16 @@ func SnapshotJob() {
 		Availability: gophercloud.AvailabilityAdmin,
 	}
 
-	CreateServersSnapshots(provider, computeOpts)
 	CreateVolumesSnapshots(provider, computeOpts)
+	CreateServersSnapshots(provider, computeOpts)
 }
 
 func SnapshotWorker(wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	c := cron.New()
-	const fifteenDaysInMin = 360
-	schedAt := fmt.Sprintf("@every %dh", fifteenDaysInMin)
+
+	schedAt := fmt.Sprintf("@every %dh", config.FifteenDaysInMin)
 
 	entryId, err := c.AddFunc(schedAt, SnapshotJob)
 	util.HandleErr(err)
@@ -67,7 +67,8 @@ func RegisterWorker(fn worker) {
 func StartWorkers() {
 	startHandle(SnapshotJob)
 
-	log.Println("Starting cron workers")
+	log.Printf("Workers waiting %v minutes to wake up again", config.FifteenDaysInMin)
+
 
 	wg := new(sync.WaitGroup)
 	mu.Lock()
