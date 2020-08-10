@@ -45,7 +45,7 @@ var (
 )
 
 const (
-	cloudsFile = "clouds.yaml"
+	cloudsFile = "/opt/snapshot_job/clouds.yaml"
 )
 
 func LoadConfig() {
