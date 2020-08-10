@@ -1,2 +1,2 @@
-## Openstack snapshots backup to SharePoint
+## Sync Edge OpenStack snapshots with Cloud
     

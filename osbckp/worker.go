@@ -11,7 +11,6 @@ import (
 	"github.com/gophercloud/gophercloud"
 	"github.com/nuveo/log"
 	"github.com/robfig/cron/v3"
-	"github.com/zloylos/grsync"
 )
 
 type worker func(wg *sync.WaitGroup)
@@ -42,66 +41,6 @@ func SnapshotJob() {
 	CreateServersSnapshots(provider, computeOpts)
 }
 
-func BackupJob() {
-	log.Printf("Starting Backup Job at [%s]\n", time.Now().Format(config.DateLayout))
-	CreateBackup()
-}
-
-func SharePointBackupWorker(wg *sync.WaitGroup) {
-
-}
-
-func SyncBackupWorker(wg *sync.WaitGroup) {
-	defer wg.Done()
-	log.Println("Sync Backup Worker Started")
-
-	nwg := new(sync.WaitGroup)
-	src := config.GetRSyncConfig().Source
-	dest := config.GetRSyncConfig().Destination
-	rsh := config.GetRSyncConfig().RSH
-
-	task := grsync.NewTask(
-		src,
-		dest,
-		grsync.RsyncOptions{
-			Verbose:       true,
-			Checksum:      true,
-			Recursive:     true,
-			Compress:      true,
-			HumanReadable: true,
-			Progress:      true,
-			Rsh:           rsh,
-		},
-	)
-	nwg.Add(1)
-
-	go func(w *sync.WaitGroup) {
-		for {
-			state := task.State()
-			log.Printf(
-				"progress: %.2f / rem. %d / tot. %d / sp. %s \n",
-				state.Progress,
-				state.Remain,
-				state.Total,
-				state.Speed,
-			)
-			time.Sleep(time.Second)
-			if state.Progress == float64(100) {
-				break
-			}
-		}
-		w.Done()
-	}(nwg)
-
-	if err := task.Run(); err != nil {
-		util.HandleErr(err)
-	}
-
-	log.Println(task.Log())
-	nwg.Wait()
-	log.Println("Backup finished")
-}
-
 func SnapshotWorker(wg *sync.WaitGroup) {
 	defer wg.Done()
 	c := cron.New()
@@ -129,8 +68,7 @@ func RegisterWorker(fn worker) {
 }
 
 func StartWorkers() {
-	// jobHandle(SnapshotJob)
-	// jobHandle(BackupJob)
+	jobHandle(SnapshotJob)
 
 	log.Printf("Workers waiting [%v] minutes to wake up again\n", config.FifteenDaysInMin)
 

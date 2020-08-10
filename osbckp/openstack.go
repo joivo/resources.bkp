@@ -88,13 +88,14 @@ func CreateVolumesSnapshots(provider *gophercloud.ProviderClient, eopts gophercl
 
 func handleInstanceSnapshotResult(res servers.CreateImageResult, group *sync.WaitGroup, client *gophercloud.ServiceClient) {
 	defer group.Done()
-	var maxRetry = 100
+	var retries = 100
+	const exhausted = 0
 
 	id, err := res.ExtractImageID()
 	util.HandleErr(err)
 
-	for maxRetry != 0 {
-		log.Printf("Checking result of snapshot with ID [%s]. Retry number [%d]\n", id, maxRetry)
+	for retries != exhausted {
+		log.Printf("Checking result of snapshot with ID [%s]. Retry number [%d]\n", id, retries)
 
 		r := images.Get(client, id)
 
@@ -113,11 +114,11 @@ func handleInstanceSnapshotResult(res servers.CreateImageResult, group *sync.Wai
 		if currentStatus == string(images.ImageStatusActive) {
 			return
 		}
-		maxRetry = maxRetry - 1
+		retries -= 1
 		time.Sleep(config.PoolingInterval)
 	}
 
-	if maxRetry == 0 {
+	if retries == exhausted {
 		log.Println("Worker exhausted, retry exceeded")
 		return
 	}
@@ -167,7 +168,7 @@ func CreateServersSnapshots(provider *gophercloud.ProviderClient, eopts gophercl
 
 	wg.Wait()
 
-	log.Println("Instances snapshot finished")
+	log.Println("Snapshot of instances done")
 }
 
 func CreateClientProvider() (*gophercloud.ProviderClient, error) {

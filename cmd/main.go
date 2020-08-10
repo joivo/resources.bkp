@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/joivo/osbckp/config"
 	"os"
 
+	"github.com/joivo/osbckp/config"
 	"github.com/joivo/osbckp/osbckp"
 	"github.com/joivo/osbckp/util"
 
@@ -11,10 +11,9 @@ import (
 )
 
 func loadLogFile() (f *os.File, err error) {
-	path := "/var/log/osbckp"
+	const path = "/var/log/osbckp"
 	util.CreatePathIfNotExist(path)
 	f, err = os.OpenFile(path+"/osbckp.log", os.O_WRONLY|os.O_CREATE, 0755)
-
 	return
 }
 
@@ -23,9 +22,7 @@ func main() {
 
 	config.LoadConfig()
 
-	// osbckp.RegisterWorker(osbckp.SnapshotWorker)
-	// osbckp.RegisterWorker(osbckp.SyncBackupWorker)
-	osbckp.RegisterWorker(osbckp.SharePointBackupWorker)
+	osbckp.RegisterWorker(osbckp.SnapshotWorker)
 	osbckp.StartWorkers()
 
 	log.Println("Exiting...")

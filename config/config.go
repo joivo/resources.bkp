@@ -1,7 +1,6 @@
 package config
 
 import (
-	"encoding/json"
 	"os"
 	"sync"
 	"time"
@@ -11,12 +10,6 @@ import (
 	"github.com/nuveo/log"
 	"gopkg.in/yaml.v3"
 )
-
-type RSyncJson struct {
-	RSH         string
-	Source      string
-	Destination string
-}
 
 type OpenStackConfig struct {
 	Clouds struct {
@@ -48,12 +41,10 @@ const (
 
 var (
 	openStackConfig OpenStackConfig
-	rsyncConfig     RSyncJson
 	mu              = new(sync.Mutex)
 )
 
 const (
-	rsyncjson  = "rsync.json"
 	cloudsFile = "clouds.yaml"
 )
 
@@ -61,22 +52,12 @@ func LoadConfig() {
 	cloudsConf := getBytesOfFile(cloudsFile)
 	err := yaml.Unmarshal(cloudsConf, &openStackConfig)
 	util.HandleFatal(err)
-
-	rsyncConf := getBytesOfFile(rsyncjson)
-	err = json.Unmarshal(rsyncConf, &rsyncConfig)
-	util.HandleFatal(err)
 }
 
 func GetOpenStackConfig() *OpenStackConfig {
 	defer mu.Unlock()
 	mu.Lock()
 	return &openStackConfig
-}
-
-func GetRSyncConfig() *RSyncJson {
-	defer mu.Unlock()
-	mu.Lock()
-	return &rsyncConfig
 }
 
 func getBytesOfFile(fileName string) []byte {
