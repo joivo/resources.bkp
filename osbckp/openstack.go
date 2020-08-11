@@ -26,14 +26,10 @@ func handleVolumeSnapshotResult(res snapshots.CreateResult, group *sync.WaitGrou
 	log.Printf("Snapshot initial status [%s]\n", snap.Status)
 
 	err = snapshots.WaitForStatus(client, id, config.UsefulVolumeStatus, 60)
-	if err != nil {
-		log.Println(err.Error())
-		return
-	}
+	util.HandleErr(err)
 
 	r := snapshots.Get(client, id)
 	snap, err = r.Extract()
-
 	util.HandleErr(err)
 	log.Println("Snapshot status ", snap.Status)
 }
@@ -45,6 +41,7 @@ func CreateVolumesSnapshots(provider *gophercloud.ProviderClient, eopts gophercl
 	util.HandleErr(err)
 
 	allPages, err := volumes.List(bsV3, volumes.ListOpts{
+		AllTenants: true,
 		Status: config.UsefulVolumeStatus,
 	}).AllPages()
 	util.HandleErr(err)
@@ -74,7 +71,7 @@ func CreateVolumesSnapshots(provider *gophercloud.ProviderClient, eopts gophercl
 			group := new(sync.WaitGroup)
 			group.Add(1)
 			r := snapshots.Create(bsV3, createSnapshotOpts)
-			handleVolumeSnapshotResult(r, group, bsV3)
+			go handleVolumeSnapshotResult(r, group, bsV3)
 
 			group.Wait()
 			w.Done()
@@ -153,23 +150,58 @@ func CreateServersSnapshots(provider *gophercloud.ProviderClient, eopts gophercl
 		log.Println("Snapshot name ", snapshotName)
 		log.Printf("Sending request to build image for %s\n", srv.Name)
 		log.Printf("Creating snapshot of server %s\n", srv.ID)
-		srv := srv
+
 		func(w *sync.WaitGroup) {
 			group := new(sync.WaitGroup)
 			group.Add(1)
 
 			r := servers.CreateImage(computeV2, srv.ID, createImgOpts)
-			handleInstanceSnapshotResult(r, group, computeV2)
+			go handleInstanceSnapshotResult(r, group, computeV2)
 
 			group.Wait()
 			w.Done()
 		}(wg)
 	}
-
 	wg.Wait()
-
 	log.Println("Snapshot of instances done")
 }
+
+func DeleteOldSnapshots(provider *gophercloud.ProviderClient, eopts gophercloud.EndpointOpts) {
+	log.Println("Deleting old snapshots")
+
+	bsV3, err := openstack.NewBlockStorageV3(provider, eopts)
+	util.HandleErr(err)
+
+	allPages, err := snapshots.List(bsV3, snapshots.ListOpts{
+		AllTenants: true,
+		Status:     config.UsefulVolumeStatus,
+	}).AllPages()
+	util.HandleErr(err)
+
+	extractedSnapshots, err := snapshots.ExtractSnapshots(allPages)
+
+	log.Printf("[%d] snapshots were found\n", len(extractedSnapshots))
+
+	wg := new(sync.WaitGroup)
+	wg.Add(len(extractedSnapshots))
+
+	limit := 120 * time.Hour
+	var count int
+	for _, s := range extractedSnapshots {
+		limitExceed := time.Now().Sub(s.CreatedAt) >= limit
+		if limitExceed {
+			log.Printf("Limit exceeded for %s\n", s.ID)
+			log.Printf("Deleting %s\n", s.ID)
+			snapshots.Delete(bsV3, s.ID)
+			count += 1
+			wg.Done()
+		}
+	}
+	wg.Wait()
+	log.Warningf("[%d] snapshots were deleted\n", count)
+	log.Println("Cleaning done")
+}
+
 
 func CreateClientProvider() (*gophercloud.ProviderClient, error) {
 	log.Println("Creating client provider")

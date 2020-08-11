@@ -13,64 +13,58 @@ import (
 	"github.com/robfig/cron/v3"
 )
 
-type worker func(wg *sync.WaitGroup)
-type job func()
-
-const successCode = 0
-
-var workPoints = make(chan int)
+type Worker func(wg *sync.WaitGroup)
+type Job func()
 
 var (
 	mu      = new(sync.Mutex)
-	workers = make([]worker, 0)
+	workers = make([]Worker, 0)
 )
 
-func SnapshotJob() {
-	log.Printf("Starting Snapshot Job at [%s]\n", time.Now().Format(config.DateLayout))
-
-	provider, err := CreateClientProvider()
-	util.HandleErr(err)
-
-	regionName := config.GetOpenStackConfig().Clouds.OpenStack.RegionName
-	computeOpts := gophercloud.EndpointOpts{
-		Region:       regionName,
-		Availability: gophercloud.AvailabilityAdmin,
+func SnapshotJobCreator(provider *gophercloud.ProviderClient, eopts gophercloud.EndpointOpts) Job {
+	return func () {
+		log.Printf("Starting Job to snapshot instances and volumes at [%s]\n", time.Now().Format(config.DateLayout))
+		checkOldSnapshotsJobCreator(provider, eopts)
+		CreateVolumesSnapshots(provider, eopts)
+		CreateServersSnapshots(provider, eopts)
 	}
-
-	CreateVolumesSnapshots(provider, computeOpts)
-	CreateServersSnapshots(provider, computeOpts)
 }
 
-func SnapshotWorker(wg *sync.WaitGroup) {
-	defer wg.Done()
-	c := cron.New()
-
-	schedAt := fmt.Sprintf("@every %dh", config.FifteenDaysInMin)
-
-	entryId, err := c.AddFunc(schedAt, SnapshotJob)
-	util.HandleErr(err)
-	log.Printf("EntryID: [%s] \n", entryId)
-	c.Run()
-	log.Println("Snapshot Worker done")
-	workPoints <- successCode
+func checkOldSnapshotsJobCreator(provider *gophercloud.ProviderClient, eopts gophercloud.EndpointOpts) {
+	log.Println("Checking olds snapshots")
+	DeleteOldSnapshots(provider, eopts)
 }
 
-func jobHandle(fn job) {
-	log.Println("Running first start job")
+func SnapshotWorkerCreator(provider *gophercloud.ProviderClient, eopts gophercloud.EndpointOpts) Worker {
+	return func (wg *sync.WaitGroup) {
+		defer wg.Done()
+		c := cron.New()
+
+		schedAt := fmt.Sprintf("@every %dh", config.FifteenDaysInMin)
+
+		_, err := c.AddFunc(schedAt, SnapshotJobCreator(provider, eopts))
+		util.HandleErr(err)
+		c.Run()
+		log.Println("Snapshot Worker done")
+	}
+}
+
+func jobHandle(fn Job) {
+	log.Println("Running first SnapshotJobCreator Job")
 	fn()
 }
 
-func RegisterWorker(fn worker) {
+func RegisterWorker(fn Worker) {
 	mu.Lock()
-	log.Println("Registering worker")
+	log.Println("Registering Worker")
 	workers = append(workers, fn)
 	mu.Unlock()
 }
 
-func StartWorkers() {
-	jobHandle(SnapshotJob)
+func StartWorkers(sleepTime int, provider *gophercloud.ProviderClient, eopts gophercloud.EndpointOpts) {
+	jobHandle(SnapshotJobCreator(provider, eopts))
 
-	log.Printf("Workers waiting [%v] minutes to wake up again\n", config.FifteenDaysInMin)
+	log.Printf("Workers waiting [%v] minutes to wake up again\n", sleepTime)
 
 	wg := new(sync.WaitGroup)
 	mu.Lock()

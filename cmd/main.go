@@ -7,23 +7,26 @@ import (
 	"github.com/joivo/osbckp/osbckp"
 	"github.com/joivo/osbckp/util"
 
+	"github.com/gophercloud/gophercloud"
 	"github.com/nuveo/log"
 )
-
-func loadLogFile() (f *os.File, err error) {
-	const path = "/var/log/osbckp"
-	util.CreatePathIfNotExist(path)
-	f, err = os.OpenFile(path+"/osbckp.log", os.O_WRONLY|os.O_CREATE, 0755)
-	return
-}
 
 func main() {
 	log.Println("*** Starting OpenStack snapshots backup ***")
 
 	config.LoadConfig()
 
-	osbckp.RegisterWorker(osbckp.SnapshotWorker)
-	osbckp.StartWorkers()
+	provider, err := osbckp.CreateClientProvider()
+	util.HandleErr(err)
+
+	regionName := config.GetOpenStackConfig().Clouds.OpenStack.RegionName
+	endpointOpts := gophercloud.EndpointOpts{
+		Region:       regionName,
+		Availability: gophercloud.AvailabilityAdmin,
+	}
+
+	osbckp.RegisterWorker(osbckp.SnapshotWorkerCreator(provider, endpointOpts))
+	osbckp.StartWorkers(config.FifteenDaysInMin, provider, endpointOpts)
 
 	log.Println("Exiting...")
 	os.Exit(0)
