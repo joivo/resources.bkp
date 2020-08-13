@@ -169,36 +169,73 @@ func CreateServersSnapshots(provider *gophercloud.ProviderClient, eopts gophercl
 func DeleteOldSnapshots(provider *gophercloud.ProviderClient, eopts gophercloud.EndpointOpts) {
 	log.Println("Deleting old snapshots")
 
+	const lifeTime = (2 * config.WeekInHours) * time.Hour
+
+	// volumes snapshots
 	bsV3, err := openstack.NewBlockStorageV3(provider, eopts)
 	util.HandleErr(err)
 
-	allPages, err := snapshots.List(bsV3, snapshots.ListOpts{
+	volumePages, err := snapshots.List(bsV3, snapshots.ListOpts{
 		AllTenants: true,
 		Status:     config.UsefulVolumeStatus,
 	}).AllPages()
 	util.HandleErr(err)
 
-	extractedSnapshots, err := snapshots.ExtractSnapshots(allPages)
+	extractedSnapshots, err := snapshots.ExtractSnapshots(volumePages)
 
-	log.Printf("[%d] snapshots were found\n", len(extractedSnapshots))
+	log.Printf("[%d] volumes snapshots were found\n", len(extractedSnapshots))
 
 	wg := new(sync.WaitGroup)
 	wg.Add(len(extractedSnapshots))
 
-	limit := 120 * time.Hour
 	var count int
 	for _, s := range extractedSnapshots {
-		limitExceed := time.Now().Sub(s.CreatedAt) >= limit
-		if limitExceed {
-			log.Printf("Limit exceeded for %s\n", s.ID)
+		isSnapshot := strings.HasPrefix(s.Name, "snapshot_")
+		exceed := time.Now().Sub(s.CreatedAt) >= lifeTime
+		if exceed && isSnapshot {
+			log.Printf("Life time of %s exceeded\n", s.ID)
 			log.Printf("Deleting %s\n", s.ID)
 			snapshots.Delete(bsV3, s.ID)
 			count += 1
-			wg.Done()
 		}
+		wg.Done()
 	}
+	log.Warningf("[%d] volumes snapshots were deleted\n", count)
+
+	// instances images snapshots
+	imgV2, err := openstack.NewImageServiceV2(provider, eopts)
+	util.HandleErr(err)
+
+	resp := images.List(imgV2, images.ListOpts{
+		Status:          images.ImageStatusActive,
+	})
+
+	pages, err := resp.AllPages()
+
+	util.HandleErr(err)
+
+	imgs, err := images.ExtractImages(pages)
+	util.HandleErr(err)
+
+	log.Printf("[%d] image instances snapshots were found\n", len(imgs))
+
+	wg.Add(len(imgs))
+
+	count = 0
+	for _, img := range imgs {
+		isSnapshot := strings.HasPrefix(img.Name, "snapshot_")
+		exceed := time.Now().Sub(img.CreatedAt) >= lifeTime
+		if exceed && isSnapshot{
+			log.Printf("Life time of %s exceeded\n", img.ID)
+			log.Printf("Deleting %s\n", img.ID)
+			images.Delete(imgV2, img.ID)
+			count += 1
+		}
+		wg.Done()
+	}
+
 	wg.Wait()
-	log.Warningf("[%d] snapshots were deleted\n", count)
+	log.Warningf("[%d] instances snapshots were deleted\n", count)
 	log.Println("Cleaning done")
 }
 

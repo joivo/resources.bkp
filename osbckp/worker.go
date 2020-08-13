@@ -24,9 +24,9 @@ var (
 func SnapshotJobCreator(provider *gophercloud.ProviderClient, eopts gophercloud.EndpointOpts) Job {
 	return func () {
 		log.Printf("Starting Job to snapshot instances and volumes at [%s]\n", time.Now().Format(config.DateLayout))
-		checkOldSnapshotsJobCreator(provider, eopts)
 		CreateVolumesSnapshots(provider, eopts)
 		CreateServersSnapshots(provider, eopts)
+		checkOldSnapshotsJobCreator(provider, eopts)
 	}
 }
 
@@ -40,7 +40,7 @@ func SnapshotWorkerCreator(provider *gophercloud.ProviderClient, eopts gopherclo
 		defer wg.Done()
 		c := cron.New()
 
-		schedAt := fmt.Sprintf("@every %dh", config.FifteenDaysInMin)
+		schedAt := fmt.Sprintf("@every %dh", config.WeekInHours)
 
 		_, err := c.AddFunc(schedAt, SnapshotJobCreator(provider, eopts))
 		util.HandleErr(err)

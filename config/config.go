@@ -37,6 +37,7 @@ const (
 	UsefulServerStatus = "active"
 	PoolingInterval    = 10 * time.Second
 	FifteenDaysInMin   = 360
+	WeekInHours = 7 * 24
 )
 
 var (
