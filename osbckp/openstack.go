@@ -42,7 +42,7 @@ func CreateVolumesSnapshots(provider *gophercloud.ProviderClient, eopts gophercl
 
 	allPages, err := volumes.List(bsV3, volumes.ListOpts{
 		AllTenants: true,
-		Status: config.UsefulVolumeStatus,
+		Status:     config.UsefulVolumeStatus,
 	}).AllPages()
 	util.HandleErr(err)
 
@@ -207,7 +207,7 @@ func DeleteOldSnapshots(provider *gophercloud.ProviderClient, eopts gophercloud.
 	util.HandleErr(err)
 
 	resp := images.List(imgV2, images.ListOpts{
-		Status:          images.ImageStatusActive,
+		Status: images.ImageStatusActive,
 	})
 
 	pages, err := resp.AllPages()
@@ -225,7 +225,7 @@ func DeleteOldSnapshots(provider *gophercloud.ProviderClient, eopts gophercloud.
 	for _, img := range imgs {
 		isSnapshot := strings.HasPrefix(img.Name, "snapshot_")
 		exceed := time.Now().Sub(img.CreatedAt) >= lifeTime
-		if exceed && isSnapshot{
+		if exceed && isSnapshot {
 			log.Printf("Life time of %s exceeded\n", img.ID)
 			log.Printf("Deleting %s\n", img.ID)
 			images.Delete(imgV2, img.ID)
@@ -238,7 +238,6 @@ func DeleteOldSnapshots(provider *gophercloud.ProviderClient, eopts gophercloud.
 	log.Warningf("[%d] instances snapshots were deleted\n", count)
 	log.Println("Cleaning done")
 }
-
 
 func CreateClientProvider() (*gophercloud.ProviderClient, error) {
 	log.Println("Creating client provider")

@@ -22,7 +22,7 @@ var (
 )
 
 func SnapshotJobCreator(provider *gophercloud.ProviderClient, eopts gophercloud.EndpointOpts) Job {
-	return func () {
+	return func() {
 		log.Printf("Starting Job to snapshot instances and volumes at [%s]\n", time.Now().Format(config.DateLayout))
 		CreateVolumesSnapshots(provider, eopts)
 		CreateServersSnapshots(provider, eopts)
@@ -36,7 +36,7 @@ func checkOldSnapshotsJobCreator(provider *gophercloud.ProviderClient, eopts gop
 }
 
 func SnapshotWorkerCreator(provider *gophercloud.ProviderClient, eopts gophercloud.EndpointOpts) Worker {
-	return func (wg *sync.WaitGroup) {
+	return func(wg *sync.WaitGroup) {
 		defer wg.Done()
 		c := cron.New()
 
