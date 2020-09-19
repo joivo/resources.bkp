@@ -92,7 +92,7 @@ func handleInstanceSnapshotResult(res servers.CreateImageResult, group *sync.Wai
 	util.HandleErr(err)
 
 	for retries != exhausted {
-		log.Printf("Checking result of snapshot with ID [%s]. Retry number [%d]\n", id, retries)
+		log.Printf("Checking result of snapshot with ID [%s] ([%d] retries left).\n", id, retries)
 
 		r := images.Get(client, id)
 
